@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Alumni Link — Student ↔ Alumni Connector (Demo)</title>
+  <meta name="description" content="Alumni Link demo: curtains, login/create account, student goals, connect with alumni, chat & video preview."/>
+  <style>
+    /* ----------------------
+       Friendly color palette
+       ----------------------
+       - bg: soft navy
+       - card: warm cream
+       - accent: teal / coral
+    */
+    :root{
+      --bg: #0f1724;          /* deep blue */
+      --card: #f6f7fb;        /* off-white */
+      --muted: #7b8794;
+      --accent: #3dd7c4;      /* teal */
+      --accent-2: #ff7a7a;    /* coral */
+      --glass: rgba(255,255,255,0.06);
+      --maxw: 1100px;
+      --radius: 12px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial;background:
+      radial-gradient(1200px 600px at 10% 10%, rgba(61,215,196,0.06), transparent 8%),
+      linear-gradient(180deg,#071028 0%, #0b1430 100%); color:#072229; min-height:100vh;}
+    .wrap{width:92%;max-width:var(--maxw);margin:28px auto;position:relative}
+
+    /* curtain container */
+    .curtain-root{position:fixed;inset:0;display:grid;place-items:center;z-index:60}
+    .stage{position:relative;width:100%;height:100vh;overflow:hidden}
+    .curtain{position:absolute;top:0;bottom:0;width:50%;background:linear-gradient(180deg,#072033,#0a2b3a);transition:transform 1s cubic-bezier(.22,.9,.2,1);z-index:80}
+    .curtain.left{left:0;border-right:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center}
+    .curtain.right{right:0;border-left:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center}
+    .curtain.open-left{transform:translateX(-110%) }
+    .curtain.open-right{transform:translateX(110%) }
+
+    .entry-box{color:white;text-align:center;z-index:90}
+    .entry-btn{background:linear-gradient(90deg,#3dd7c4,#79f0d5);border:0;padding:12px 20px;border-radius:999px;font-weight:700;color:#043332;cursor:pointer}
+    .entry-sub{color:rgba(255,255,255,0.8);margin-top:8px;font-size:14px}
+
+    /* top nav */
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-radius:12px}
+    .brand{display:flex;align-items:center;gap:12px;color:var(--card)}
+    .logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#6ee7b7);display:grid;place-items:center;color:#032928;font-weight:800}
+    header nav a{color:rgba(255,255,255,0.9);margin-left:14px;text-decoration:none;font-weight:600}
+
+    /* main card layout */
+    .hero{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start;margin-top:18px}
+    .card{background:linear-gradient(180deg,#f9fbfd,#eef6f6);border-radius:var(--radius);padding:18px;box-shadow:0 8px 30px rgba(4,20,30,0.25)}
+    .muted{color:var(--muted);font-size:13px}
+
+    /* login/create UI */
+    .auth{max-width:520px;margin:36px auto;padding:18px;border-radius:12px;background:rgba(255,255,255,0.04);backdrop-filter: blur(4px);box-shadow:0 10px 30px rgba(2,6,23,0.4);color:#e9f6f3}
+    .auth h2{margin:0 0 8px 0}
+    .field{margin-top:10px}
+    input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#e7fbf5;font-size:14px}
+    label{display:block;font-size:13px;margin-bottom:6px;color:rgba(255,255,255,0.85)}
+    .btn{margin-top:12px;padding:10px 14px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent),#79f0d5);color:#043332;font-weight:800;cursor:pointer}
+
+    /* dashboard */
+    .welcome{display:flex;align-items:center;gap:12px}
+    .avatar{width:72px;height:72px;border-radius:14px;background:linear-gradient(135deg,var(--accent),#6ee7b7);display:grid;place-items:center;font-weight:800;color:#042829;font-size:20px}
+    .chips{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+    .chip{background:rgba(4,20,22,0.05);padding:8px 10px;border-radius:999px;font-weight:700;color:#07403b;font-size:13px}
+
+    /* skills / goal form */
+    .goal-form{display:flex;gap:8px;margin-top:12px}
+    .goal-form input{flex:1}
+    .goal-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+
+    /* alumni list */
+    .alumni-list{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+    .alumni-card{padding:12px;border-radius:10px;background:white;box-shadow:0 6px 20px rgba(2,6,23,0.08);display:flex;gap:10px;align-items:center}
+    .al-meta h4{margin:0 0 6px 0}
+    .tag{display:inline-block;background:rgba( 0, 174, 0.04);padding:6px 8px;border-radius:8px;margin-right:6px;font-size:12px}
+
+    /* connections & chat */
+    .connections{margin-top:14px}
+    .conn-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:linear-gradient(180deg,#f8fbfb,#eff8f7);border:1px solid rgba(3,20,20,0.04)}
+    .chat-box{display:flex;flex-direction:column;gap:8px;height:300px;border-radius:10px;padding:10px;background:white;overflow:hidden}
+    .chat-messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+    .msg.me{align-self:flex-end;background:linear-gradient(90deg,#3dd7c4,#79f0d5);color:#18b447;padding:8px 10px;border-radius:10px}
+    .msg.them{align-self:flex-start;background:#f1f3f6;color:#072229;padding:8px 10px;border-radius:10px}
+    .chat-input{display:flex;gap:8px;margin-top:6px}
+    .small-btn{padding:8px 10px;border-radius:8px;border:0;background:linear-gradient(90deg,#ffd1d1,#ff7a7a);font-weight:700;color:#431212}
+
+    /* modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.5);display:none;align-items:center;justify-content:center;z-index:90}
+    .modal{width:96%;max-width:760px;background:var(--card);padding:16px;border-radius:12px;box-shadow:0 12px 40px rgba(2,6,23,0.5)}
+    .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .close-x{background:transparent;border:0;font-weight:700;cursor:pointer;color:#072229}
+
+    /* responsive */
+    @media (max-width:980px){
+      .hero{grid-template-columns:1fr}
+      .alumni-list{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="stage curtain-root" id="stageRoot">
+    <!-- Curtains -->
+    <div class="curtain left" id="curtainLeft"><div class="entry-box"><div style="font-size:36px;font-weight:800">AlumniLink</div><div class="entry-sub">From Campus Roots to Global Connections.</div></div></div>
+    <div class="curtain right" id="curtainRight"><div class="entry-box"><button class="entry-btn" id="enterBtn">Enter</button><div class="entry-sub">Sign in, create an account & get matched</div></div></div>
+  </div>
+
+  <div class="wrap" id="appRoot" style="display:none">
+    <header>
+      <div class="brand"><div class="logo">AL</div><div style="color:white;font-weight:800">AlumniLink</div></div>
+      <nav>
+        <a href="#" id="navDashboard">Dashboard</a>
+        <a href="#" id="navConnections">Connections</a>
+        <a href="#" id="navLogout" style="display:none">Logout</a>
+      </nav>
+    </header>
+
+    <!-- Auth area (login/create) -->
+    <div id="authArea" class="auth" style="display:none;">
+      <h2 id="authTitle">Welcome</h2>
+      <p class="muted" id="authSub">Login or create your student account</p>
+
+      <div id="loginBlock">
+        <div class="field">
+          <label>Email (or use any identifier)</label>
+          <input id="loginEmail" placeholder="e.g. 18BCS123@student.edu">
+        </div>
+        <button class="btn" id="loginBtn">Login (demo)</button>
+        <div style="margin-top:10px;color:var(--muted)">Don't have an account? <a href="#" id="showCreate" style="color:var(--accent);font-weight:700">Create one</a></div>
+      </div>
+
+      <div id="createBlock" style="display:none;margin-top:12px">
+        <div class="field">
+          <label>Full name</label>
+          <input id="nameInput" placeholder="Your full name">
+        </div>
+        <div class="field">
+          <label>Roll number</label>
+          <input id="rollInput" placeholder="Roll number (e.g. 18BCS123)">
+        </div>
+        <div class="field">
+          <label>University / College</label>
+          <input id="univInput" placeholder="Your institution">
+        </div>
+        <div class="field">
+          <label>Batch / Graduation year</label>
+          <input id="batchInput" placeholder="2023">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" id="createBtn">Create Account</button>
+          <button class="close-x" id="showLogin">Back to Login</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main dashboard -->
+    <main id="mainArea" style="display:none">
+      <div class="hero">
+        <div class="card">
+          <div class="welcome">
+            <div class="avatar" id="profileAvatar">SN</div>
+            <div>
+              <div style="font-size:18px;font-weight:800" id="welcomeName">Welcome</div>
+              <div class="muted" id="welcomeUni">Student · University</div>
+              <div class="chips" id="chipWrap"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:800">Your goals & skills</div>
+              <div class="muted">Add what you want to work on — we'll match alumni</div>
+            </div>
+
+            <div class="goal-form">
+              <input id="goalInput" placeholder="Add a skill or goal (e.g., research: reinforcement learning)">
+              <button class="btn" id="addGoalBtn">Add</button>
+            </div>
+
+            <div class="goal-list" id="goalList"></div>
+
+            <div style="margin-top:10px">
+              <div style="font-weight:800">Suggested alumni</div>
+              <div class="muted">Based on your skills/goals</div>
+              <div class="alumni-list" id="alumniList"></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="card">
+          <div style="font-weight:800">Upcoming events</div>
+          <div class="muted" style="margin-top:8px">RSVP — invite alumni mentors</div>
+          <div style="margin-top:10px">
+            <div style="padding:10px;border-radius:8px;background:linear-gradient(180deg,#fff,#f3fbfa);margin-bottom:8px">
+              <div style="font-weight:700">Research Talks: AI & Society</div>
+              <div class="muted" style="font-size:13px">Oct 10 · Online · RSVP</div>
+              <div style="margin-top:8px"><button class="small-btn" id="rsvpBtn">RSVP</button></div>
+            </div>
+            <div style="padding:10px;border-radius:8px;background:linear-gradient(180deg,#fff,#f7f6fb)">
+              <div style="font-weight:700">Startup Pitch Day</div>
+              <div class="muted" style="font-size:13px">Nov 7 · Campus</div>
+              <div style="margin-top:8px"><button class="small-btn">View</button></div>
+            </div>
+          </div>
+
+          <div style="margin-top:14px">
+            <div style="font-weight:800">Quick actions</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+              <button class="small-btn" id="editProfileBtn">Edit Profile</button>
+              <button class="small-btn" id="viewAllAlumni">All Alumni</button>
+            </div>
+          </div>
+
+        </aside>
+      </div>
+
+      <!-- Connections (hidden by default) -->
+      <div id="connectionsArea" style="display:none;margin-top:18px">
+        <div style="display:flex;gap:12px;align-items:center;justify-content:space-between">
+          <div style="font-weight:800">Your connections</div>
+          <div class="muted">Open chat or video preview</div>
+        </div>
+
+        <div class="connections" id="connectionsList"></div>
+      </div>
+    </main>
+
+    <footer style="margin-top:18px;color:rgba(255,255,255,0.6);text-align:center">Demo — local-only. No backend. Video preview uses your webcam (permission required).</footer>
+  </div>
+
+  <!-- Modal for alumni profile -->
+  <div class="modal-backdrop" id="modalRoot">
+    <div class="modal" id="modalCard">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="avatar" id="modalAvatar">AL</div>
+        <div>
+          <div style="font-weight:900" id="modalName">Name</div>
+          <div class="muted" id="modalRole">Role · Batch</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px" id="modalBio">Bio</div>
+      <div style="margin-top:8px" id="modalSkills"></div>
+
+      <div class="actions" style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" id="modalConnectBtn">Connect</button>
+        <button class="small-btn" id="modalChatBtn">Open Chat</button>
+        <button class="small-btn" id="modalVideoBtn">Video Call (preview)</button>
+        <button class="close-x" id="modalCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video preview modal -->
+  <div class="modal-backdrop" id="videoRoot" style="z-index:100">
+    <div class="modal" style="max-width:640px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:800">Video Preview (demo)</div>
+        <button class="close-x" id="closeVideo">Close</button>
+      </div>
+      <div style="margin-top:12px">
+        <video id="previewVideo" autoplay playsinline style="width:100%;border-radius:8px;background:#000"></video>
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="small-btn" id="stopCam">Stop</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* -------------
+   Demo Data & Storage Keys
+   ------------- */
+const STORAGE_USER = 'alumnilink_user';
+const STORAGE_GOALS = 'alumnilink_goals';
+const STORAGE_CONNECTIONS = 'alumnilink_connections';
+const STORAGE_MESSAGES = 'alumnilink_messages';
+
+/* Sample alumni (demo). In a real app, these would come from a backend */
+const ALUMNI_DATA = [
+  {id: 'a1', name: 'Dr. Asha R.', role: 'Research Scientist · ML', batch: 2016, skills: ['machine learning','nlp','research','pytorch'], bio:'PhD in ML. Open to supervising research students.'},
+  {id: 'a2', name: 'Rohit S.', role: 'Product Manager · eCommerce', batch: 2014, skills: ['product','strategy','internships','startups'], bio:'Ex-founder, now PM; hires interns for product research.'},
+  {id: 'a3', name: 'Nisha K.', role: 'Frontend Engineer · Google', batch: 2018, skills: ['react','frontend','ui','design','mentorship'], bio:'Open-source contributor & mentor for frontend projects.'},
+  {id: 'a4', name: 'Vikram P.', role: 'Founder · BioLeap', batch: 2012, skills: ['biotech','fundraising','startup','mentorship'], bio:'Founder building biotech. Can advise on startups & funding.'},
+  {id: 'a5', name: 'Sana M.', role: 'Researcher · IISc', batch: 2017, skills: ['signal processing','research','embedded','papers'], bio:'Works on signal processing and publishes regularly.'}
+];
+
+/* ---------------------
+   Curtain / entry logic
+   --------------------- */
+const curtainLeft = document.getElementById('curtainLeft');
+const curtainRight = document.getElementById('curtainRight');
+const enterBtn = document.getElementById('enterBtn');
+const stageRoot = document.getElementById('stageRoot');
+const appRoot = document.getElementById('appRoot');
+
+enterBtn.addEventListener('click', openCurtain);
+
+function openCurtain(){
+  curtainLeft.classList.add('open-left');
+  curtainRight.classList.add('open-right');
+  // after animation, hide curtain container and show app
+  setTimeout(()=> {
+    stageRoot.style.display = 'none';
+    appRoot.style.display = 'block';
+    bootApp();
+  }, 1000);
+}
+
+// If user already created account, allow skipping curtain by clicking anywhere
+stageRoot.addEventListener('click', (e)=>{
+  if(e.target.id !== 'enterBtn') {
+    openCurtain();
+  }
+});
+
+/* ---------------------
+   App initialization
+   --------------------- */
+function bootApp(){
+  // show auth or dashboard depending on stored user
+  const user = getStoredUser();
+  if(!user) {
+    showAuth();
+  } else {
+    showMain();
+  }
+  bindAuthEvents();
+  bindNav();
+}
+
+/* ---------------
+   Storage helpers
+   --------------- */
+function getStoredUser(){ try { return JSON.parse(localStorage.getItem(STORAGE_USER)); } catch(e){ return null; } }
+function setStoredUser(obj){ localStorage.setItem(STORAGE_USER, JSON.stringify(obj)); }
+function clearStoredUser(){ localStorage.removeItem(STORAGE_USER); localStorage.removeItem(STORAGE_GOALS); /* keep messages maybe */ }
+
+function getGoals(){ try { return JSON.parse(localStorage.getItem(STORAGE_GOALS)) || []; } catch(e){ return []; } }
+function setGoals(arr){ localStorage.setItem(STORAGE_GOALS, JSON.stringify(arr)); }
+
+function getConnections(){ try { return JSON.parse(localStorage.getItem(STORAGE_CONNECTIONS)) || []; } catch(e){ return []; } }
+function setConnections(arr){ localStorage.setItem(STORAGE_CONNECTIONS, JSON.stringify(arr)); }
+
+function getMessages(){ try { return JSON.parse(localStorage.getItem(STORAGE_MESSAGES)) || {}; } catch(e){ return {}; } }
+function setMessages(obj){ localStorage.setItem(STORAGE_MESSAGES, JSON.stringify(obj)); }
+
+/* ---------------------
+   Auth UI & events
+   --------------------- */
+function showAuth(){
+  document.getElementById('authArea').style.display = 'block';
+  document.getElementById('mainArea').style.display = 'none';
+  document.getElementById('navLogout').style.display = 'none';
+  document.getElementById('authTitle').textContent = 'Welcome';
+  document.getElementById('authSub').textContent = 'Login or create your student account';
+}
+
+function bindAuthEvents(){
+  document.getElementById('showCreate').addEventListener('click', e=> {
+    e.preventDefault();
+    document.getElementById('loginBlock').style.display='none';
+    document.getElementById('createBlock').style.display='block';
+  });
+  document.getElementById('showLogin').addEventListener('click', e=> {
+    e.preventDefault();
+    document.getElementById('createBlock').style.display='none';
+    document.getElementById('loginBlock').style.display='block';
+  });
+
+  document.getElementById('createBtn').addEventListener('click', ()=> {
+    const name = document.getElementById('nameInput').value.trim();
+    const roll = document.getElementById('rollInput').value.trim();
+    const univ = document.getElementById('univInput').value.trim();
+    const batch = document.getElementById('batchInput').value.trim();
+    if(!name || !roll || !univ){ alert('Please fill at least name, roll & university'); return; }
+    const user = {name, roll, univ, batch};
+    setStoredUser(user);
+    // initialize empty goals & connections
+    setGoals([]);
+    setConnections([]);
+    alert('Account created! Welcome, ' + name);
+    showMain();
+  });
+
+  document.getElementById('loginBtn').addEventListener('click', ()=> {
+    const email = document.getElementById('loginEmail').value.trim();
+    // demo: let email be roll. If there's stored user with same roll, login; otherwise prompt to create
+    const user = getStoredUser();
+    if(user && (user.roll === email || user.name.toLowerCase().includes(email.toLowerCase()) || email==='demo')) {
+      alert('Logged in as ' + user.name);
+      showMain();
+    } else {
+      alert('No local account found. Please create one (demo).');
+    }
+  });
+}
+
+/* ---------------------
+   Dashboard & rendering
+   --------------------- */
+function showMain(){
+  document.getElementById('authArea').style.display='none';
+  document.getElementById('mainArea').style.display='block';
+  document.getElementById('navLogout').style.display='inline';
+  renderProfile();
+  renderGoals();
+  renderAlumniMatches();
+  renderConnections();
+  bindDashboardEvents();
+}
+
+function bindNav(){
+  document.getElementById('navDashboard').addEventListener('click', e=>{ e.preventDefault(); document.getElementById('mainArea').style.display='block'; document.getElementById('connectionsArea').style.display='none';});
+  document.getElementById('navConnections').addEventListener('click', e=>{ e.preventDefault(); document.getElementById('mainArea').style.display='none'; document.getElementById('connectionsArea').style.display='block'; });
+  document.getElementById('navLogout').addEventListener('click', e=>{ e.preventDefault(); logout(); });
+}
+
+function renderProfile(){
+  const user = getStoredUser();
+  if(!user) return;
+  const initials = user.name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('profileAvatar').textContent = initials;
+  document.getElementById('modalAvatar').textContent = initials;
+  document.getElementById('welcomeName').textContent = user.name;
+  document.getElementById('welcomeUni').textContent = (user.univ || '') + (user.batch ? ' · Batch ' + user.batch : '');
+  // chips = roll number
+  const chipWrap = document.getElementById('chipWrap');
+  chipWrap.innerHTML = '';
+  const chip = document.createElement('div'); chip.className='chip'; chip.textContent = (user.roll || '—');
+  chipWrap.appendChild(chip);
+}
+
+/* Goals UI */
+function bindDashboardEvents(){
+  document.getElementById('addGoalBtn').onclick = addGoal;
+  document.getElementById('rsvpBtn').onclick = ()=>alert('RSVP saved (demo) — email invitations would be sent by a backend.');
+  document.getElementById('editProfileBtn').onclick = editProfile;
+  document.getElementById('viewAllAlumni').onclick = ()=>{ renderAlumniList(ALUMNI_DATA); };
+}
+
+function renderGoals(){
+  const list = getGoals();
+  const el = document.getElementById('goalList');
+  el.innerHTML = '';
+  if(list.length === 0){
+    el.innerHTML = '<div class="muted">No goals yet. Add skills or describe your research/project to find alumni matching your interests.</div>';
+    return;
+  }
+  list.forEach((g, idx) => {
+    const d = document.createElement('div'); d.style.display='flex'; d.style.justifyContent='space-between'; d.style.alignItems='center';
+    d.style.padding='8px'; d.style.borderRadius='10px'; d.style.background='linear-gradient(180deg,#fff,#f6f9f8)';
+    d.innerHTML = `<div><strong>${escapeHtml(g)}</strong><div class="muted" style="font-size:13px">Added</div></div><div style="display:flex;gap:8px"><button class="small-btn" onclick="removeGoal(${idx})">Remove</button></div>`;
+    el.appendChild(d);
+  });
+}
+
+function addGoal(){
+  const input = document.getElementById('goalInput');
+  const v = input.value.trim();
+  if(!v) return alert('Add a skill/goal text (e.g., research: reinforcement learning)');
+  const list = getGoals();
+  list.push(v);
+  setGoals(list);
+  input.value = '';
+  renderGoals();
+  renderAlumniMatches();
+}
+
+function removeGoal(i){
+  const list = getGoals(); list.splice(i,1); setGoals(list); renderGoals(); renderAlumniMatches();
+}
+
+/* --------------
+   Matching alumni
+   -------------- */
+function parseTokens(text){
+  // basic tokens from goals (split by spaces and punctuation)
+  return text.toLowerCase().split(/[\s,:;\/]+/).filter(Boolean);
+}
+
+function scoreMatch(userGoals, alum){
+  // simple overlap scoring by counting shared tokens
+  const goalTokens = userGoals.flatMap(g=>parseTokens(g));
+  let score = 0;
+  for(const tk of goalTokens){
+    if(alum.name.toLowerCase().includes(tk)) score += 1;
+    if(alum.role.toLowerCase().includes(tk)) score += 1;
+    if(alum.skills.join(' ').toLowerCase().includes(tk)) score += 2;
+    if(alum.bio.toLowerCase().includes(tk)) score += 1;
+  }
+  return score;
+}
+
+function renderAlumniMatches(){
+  const goals = getGoals();
+  const target = document.getElementById('alumniList');
+  target.innerHTML = '';
+  if(goals.length === 0){
+    target.innerHTML = '<div class="muted" style="grid-column:1/-1">Add goals to see suggested alumni.</div>';
+    return;
+  }
+  // score alumni
+  const scored = ALUMNI_DATA.map(a => ({...a, score: scoreMatch(goals, a)}));
+  scored.sort((a,b)=>b.score - a.score);
+  // show top 4 matches (score > 0) else show general list
+  const picks = scored.filter(s=>s.score>0).slice(0,6);
+  const listToShow = picks.length ? picks : ALUMNI_DATA.slice(0,6);
+  renderAlumniList(listToShow);
+}
+
+function renderAlumniList(list){
+  const container = document.getElementById('alumniList');
+  container.innerHTML = '';
+  list.forEach(a => {
+    const card = document.createElement('div'); card.className='alumni-card';
+    const initials = a.name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+    card.innerHTML = `<div style="width:64px;height:64px;border-radius:10px;background:linear-gradient(135deg,#79f0d5,#3dd7c4);display:grid;place-items:center;font-weight:800">${initials}</div>
+      <div class="al-meta">
+        <h4>${escapeHtml(a.name)}</h4>
+        <div class="muted">${escapeHtml(a.role)} · Batch ${a.batch}</div>
+        <div style="margin-top:8px">${a.skills.slice(0,3).map(s => `<span class="tag">${escapeHtml(s)}</span>`).join('')}</div>
+      </div>
+      <div style="margin-left:auto"><button class="btn" onclick='openAlumniModal("${a.id}")'>View</button></div>`;
+    container.appendChild(card);
+  });
+}
+
+/* -------------
+   Modal & connect
+   ------------- */
+const modalRoot = document.getElementById('modalRoot');
+const modalAvatar = document.getElementById('modalAvatar');
+const modalName = document.getElementById('modalName');
+const modalRole = document.getElementById('modalRole');
+const modalBio = document.getElementById('modalBio');
+const modalSkills = document.getElementById('modalSkills');
+let activeModalAlumni = null;
+
+function openAlumniModal(id){
+  const a = ALUMNI_DATA.find(x=>x.id===id);
+  if(!a) return;
+  activeModalAlumni = a;
+  modalAvatar.textContent = a.name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+  modalName.textContent = a.name;
+  modalRole.textContent = a.role + ' · Batch ' + a.batch;
+  modalBio.textContent = a.bio;
+  modalSkills.innerHTML = a.skills.map(s=>`<span class="tag">${escapeHtml(s)}</span>`).join('');
+  modalRoot.style.display = 'flex';
+}
+
+document.getElementById('modalCloseBtn').addEventListener('click', ()=> modalRoot.style.display='none');
+
+document.getElementById('modalConnectBtn').addEventListener('click', ()=>{
+  if(!activeModalAlumni) return;
+  connectWithAlumni(activeModalAlumni);
+  modalRoot.style.display='none';
+  alert('Connected with ' + activeModalAlumni.name + ' — check Connections tab to chat.');
+});
+
+document.getElementById('modalChatBtn').addEventListener('click', ()=>{
+  modalRoot.style.display='none';
+  connectWithAlumni(activeModalAlumni);
+  // switch to connections UI and open chat for that id
+  document.getElementById('mainArea').style.display='none';
+  document.getElementById('connectionsArea').style.display='block';
+  renderConnections(activeModalAlumni.id);
+});
+
+document.getElementById('modalVideoBtn').addEventListener('click', ()=>{
+  modalRoot.style.display='none';
+  connectWithAlumni(activeModalAlumni);
+  openVideoPreview();
+});
+
+/* --------------
+   Connect + Connections list
+   -------------- */
+function connectWithAlumni(alum){
+  if(!alum) return;
+  const conns = getConnections();
+  // avoid duplicates
+  if(!conns.find(c=>c.id===alum.id)){
+    conns.push({id:alum.id, name:alum.name, role:alum.role});
+    setConnections(conns);
+  }
+  // ensure messages map has an entry
+  const msgs = getMessages();
+  if(!msgs[alum.id]) msgs[alum.id] = [];
+  setMessages(msgs);
+  renderConnections();
+}
+
+function renderConnections(openForId){
+  const conns = getConnections();
+  const wrap = document.getElementById('connectionsList');
+  wrap.innerHTML = '';
+  if(conns.length === 0){
+    wrap.innerHTML = '<div class="muted">No connections yet. Add goals & connect with suggested alumni.</div>';
+    return;
+  }
+  conns.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'conn-item';
+    const initials = c.name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+    d.innerHTML = `<div style="width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,#79f0d5,#3dd7c4);display:grid;place-items:center;font-weight:800">${initials}</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">${escapeHtml(c.name)}</div>
+          <div class="muted" style="font-size:13px">${escapeHtml(c.role)}</div>
+        </div>
+        <div style="margin-top:8px" id="chatWrap-${c.id}"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="small-btn" onclick='openChat("${c.id}")'>Chat</button>
+        <button class="small-btn" onclick='openVideoPreview("${c.id}")'>Video</button>
+      </div>`;
+    wrap.appendChild(d);
+    // if openForId matches, open chat
+    if(openForId === c.id) openChat(c.id);
+  });
+}
+
+/* -------------
+   Chat UI (stored locally)
+   ------------- */
+function openChat(id){
+  // render a chat box in place of other content
+  const chatWrap = document.getElementById('chatWrap-' + id);
+  if(!chatWrap) {
+    // fallback: find the first connection and render a modal-like chat
+    renderChatModal(id);
+    return;
+  }
+  chatWrap.innerHTML = '';
+  const box = document.createElement('div');
+  box.className = 'chat-box';
+  box.innerHTML = `<div class="chat-messages" id="msgs-${id}"></div>
+    <div class="chat-input"><input id="input-${id}" placeholder="Write a message"><button class="btn" id="send-${id}">Send</button></div>`;
+  chatWrap.appendChild(box);
+  // load messages
+  renderMessages(id);
+  document.getElementById('send-'+id).addEventListener('click', ()=> {
+    const val = document.getElementById('input-'+id).value.trim();
+    if(!val) return;
+    pushMessage(id, {from:'me', text: val, time: Date.now()});
+    document.getElementById('input-'+id).value = '';
+    renderMessages(id);
+  });
+}
+
+function renderChatModal(id){
+  // simple fallback modal that shows the chat full-size
+  const msgsDivId = 'msgs-modal-' + id;
+  modalRoot.style.display='flex';
+  document.getElementById('modalAvatar').textContent = getAlumniById(id).name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('modalName').textContent = getAlumniById(id).name;
+  document.getElementById('modalRole').textContent = getAlumniById(id).role;
+  document.getElementById('modalBio').innerHTML = `<div style="height:260px;overflow:auto;background:white;padding:8px;border-radius:8px" id="${msgsDivId}"></div>
+    <div style="margin-top:8px;display:flex;gap:8px"><input id="modalInput" placeholder="Message"><button class="btn" id="modalSend">Send</button></div>`;
+  document.getElementById('modalConnectBtn').style.display = 'none';
+  document.getElementById('modalChatBtn').style.display = 'none';
+  document.getElementById('modalVideoBtn').style.display = 'none';
+  // attach send
+  document.getElementById('modalSend').addEventListener('click', ()=> {
+    const val = document.getElementById('modalInput').value.trim();
+    if(!val) return;
+    pushMessage(id, {from:'me', text: val, time: Date.now()});
+    document.getElementById('modalInput').value = '';
+    renderMessages(id, msgsDivId);
+  });
+  renderMessages(id, msgsDivId);
+}
+
+function renderMessages(id, containerId){
+  const messages = getMessages();
+  const list = messages[id] || [];
+  let container = containerId ? document.getElementById(containerId) : document.getElementById('msgs-'+id);
+  if(!container) return;
+  container.innerHTML = '';
+  list.forEach(m => {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'msg ' + (m.from === 'me' ? 'me' : 'them');
+    msgDiv.textContent = m.text;
+    container.appendChild(msgDiv);
+  });
+  // scroll to bottom
+  container.scrollTop = container.scrollHeight;
+}
+
+function pushMessage(id, msg){
+  const messages = getMessages();
+  if(!messages[id]) messages[id] = [];
+  messages[id].push(msg);
+  setMessages(messages);
+}
+
+/* -------------
+   Video preview (demo)
+   ------------- */
+const videoRoot = document.getElementById('videoRoot');
+const previewVideo = document.getElementById('previewVideo');
+let localStream = null;
+
+function openVideoPreview(){
+  videoRoot.style.display = 'flex';
+  startCamera();
+}
+function startCamera(){
+  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(stream=>{
+      localStream = stream;
+      previewVideo.srcObject = stream;
+    }).catch(err=>{
+      alert('Could not access camera. Permission denied or no camera available.');
+    });
+  } else {
+    alert('getUserMedia not supported in this browser.');
+  }
+}
+document.getElementById('closeVideo').addEventListener('click', ()=> {
+  stopCamera();
+  videoRoot.style.display='none';
+});
+document.getElementById('stopCam').addEventListener('click', ()=> { stopCamera(); });
+
+function stopCamera(){
+  if(localStream){
+    localStream.getTracks().forEach(t=>t.stop());
+    localStream = null;
+    previewVideo.srcObject = null;
+  }
+}
+
+/* -------------
+   Edit profile
+   ------------- */
+function editProfile(){
+  const user = getStoredUser();
+  if(!user) return alert('No user to edit (demo).');
+  // show modal with inputs (reuse auth createBlock)
+  document.getElementById('createBlock').style.display = 'block';
+  document.getElementById('loginBlock').style.display = 'none';
+  document.getElementById('authArea').style.display = 'block';
+  document.getElementById('mainArea').style.display='none';
+  // populate fields
+  document.getElementById('nameInput').value = user.name || '';
+  document.getElementById('rollInput').value = user.roll || '';
+  document.getElementById('univInput').value = user.univ || '';
+  document.getElementById('batchInput').value = user.batch || '';
+  // override create btn behavior to save edits
+  document.getElementById('createBtn').onclick = function(){
+    const name = document.getElementById('nameInput').value.trim();
+    const roll = document.getElementById('rollInput').value.trim();
+    const univ = document.getElementById('univInput').value.trim();
+    const batch = document.getElementById('batchInput').value.trim();
+    setStoredUser({name, roll, univ, batch});
+    alert('Profile updated.');
+    document.getElementById('createBtn').onclick = defaultCreateHandler;
+    showMain();
+  };
+}
+
+const defaultCreateHandler = document.getElementById('createBtn').onclick;
+
+/* -------------
+   Utility
+   ------------- */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function logout(){
+  clearStoredUser();
+  // also stop camera
+  stopCamera();
+  location.reload();
+}
+
+function getAlumniById(id){ return ALUMNI_DATA.find(a=>a.id===id) || null; }
+
+/* -------------
+   initial hook: prefill create click handler for editProfile
+   ------------- */
+document.addEventListener('DOMContentLoaded', ()=>{
+  // default create handler
+  document.getElementById('createBtn').onclick = defaultCreate;
+});
+
+function defaultCreate(){
+  const name = document.getElementById('nameInput').value.trim();
+  const roll = document.getElementById('rollInput').value.trim();
+  const univ = document.getElementById('univInput').value.trim();
+  const batch = document.getElementById('batchInput').value.trim();
+  if(!name || !roll || !univ){ alert('Please fill at least name, roll & university'); return; }
+  setStoredUser({name, roll, univ, batch});
+  setGoals([]);
+  setConnections([]);
+  alert('Account created — welcome ' + name + '!');
+  showMain();
+}
+
+</script>
+</body>
+</html>
